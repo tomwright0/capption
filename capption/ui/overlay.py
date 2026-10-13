@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, QRect, Qt, Signal
+from PySide6.QtCore import QPoint, QPointF, QRect, Qt, Signal
 from PySide6.QtGui import QCursor, QGuiApplication, QMouseEvent, QScreen
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
@@ -21,6 +21,7 @@ def screen_key(screen: QScreen) -> str:
 
 class OverlayWindow(QWidget):
     geometry_committed = Signal()  # position/width changed by the user; config updated
+    auto_live_toggled = Signal(bool)  # the hover "Live" switch was clicked; config updated
 
     def __init__(self, style: OverlayConfig) -> None:
         super().__init__(
@@ -113,8 +114,18 @@ class OverlayWindow(QWidget):
             return "right"
         return None
 
+    def _on_live_toggle(self, pos: QPoint) -> bool:
+        return (self.view.show_controls and self.style_cfg.scrollback
+                and self.view.live_toggle_rect().contains(QPointF(pos)))
+
     def mousePressEvent(self, e: QMouseEvent) -> None:
         if e.button() != Qt.MouseButton.LeftButton:
+            return
+        if self._on_live_toggle(e.position().toPoint()):
+            self.style_cfg.scrollback_auto_live = not self.style_cfg.scrollback_auto_live
+            self.view.apply_style(self.style_cfg)  # starts/stops the return-to-live timer
+            self.view.update()
+            self.auto_live_toggled.emit(self.style_cfg.scrollback_auto_live)
             return
         self._resize_edge = self._edge_at(e.position().toPoint())
         if self._resize_edge:
@@ -136,8 +147,12 @@ class OverlayWindow(QWidget):
         elif self._drag_offset is not None:
             self.move(self._snapped(gp - self._drag_offset))
         else:
-            edge = self._edge_at(e.position().toPoint())
-            self.setCursor(Qt.CursorShape.SizeHorCursor if edge else Qt.CursorShape.OpenHandCursor)
+            pos = e.position().toPoint()
+            edge = self._edge_at(pos)
+            if self._on_live_toggle(pos):
+                self.setCursor(Qt.CursorShape.PointingHandCursor)
+            else:
+                self.setCursor(Qt.CursorShape.SizeHorCursor if edge else Qt.CursorShape.OpenHandCursor)
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
         if self._drag_offset is not None or self._resize_edge:
@@ -148,8 +163,10 @@ class OverlayWindow(QWidget):
 
     def enterEvent(self, _e) -> None:
         self.view.highlight_edges = True
+        self.view.show_controls = True
         self.view.update()
 
     def leaveEvent(self, _e) -> None:
         self.view.highlight_edges = False
+        self.view.show_controls = False
         self.view.update()

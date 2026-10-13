@@ -35,7 +35,9 @@ with no virtual cables, no changing the default device and no routing.
   per monitor. Click-through mode lets you click the window underneath.
 - Scrollback: use the mouse wheel over the overlay to reread about the last 10 minutes. It returns
   to live when you scroll back down, or after a pause you can set (10 s by default, or never).
-  You can turn it off under **Appearance → Scrollback**.
+  Hovering over the overlay shows a small **Live** switch: turn it off to stay scrolled back
+  until you scroll down (same as **Appearance → Scrollback → Return to live automatically**).
+  Scrollback itself can be turned off there too.
 - Reattaches automatically when the captioned app restarts, and on launch auto-starts with the
   app you used last.
 - Global hotkeys, a tray icon, and optional `.txt` / `.srt` transcripts for each session.

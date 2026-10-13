@@ -49,6 +49,7 @@ class CapptionApp:
         self.window.hotkeys_changed.connect(self._register_hotkeys)
         self.window.toggle_overlay_requested.connect(self.toggle_overlay)
         self.overlay.geometry_committed.connect(self._on_overlay_moved)
+        self.overlay.auto_live_toggled.connect(lambda _on: (self.window.sync_auto_live(), self.save_soon()))
 
         self.hotkeys = self.platform.create_hotkeys(self.window)
         self.hotkeys.activated.connect(self._on_hotkey)

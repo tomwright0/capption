@@ -553,9 +553,14 @@ class MainWindow(QMainWindow):
         fade = self._spin(0, 60, int(o.fade_after_s), lambda v: self._style("fade_after_s", float(v)), " s")
         scrollback = QCheckBox()
         scrollback.setChecked(o.scrollback)
-        resume = self._spin(0, 600, o.scrollback_resume_s, lambda v: self._style("scrollback_resume_s", v), " s")
-        resume.setEnabled(o.scrollback)
-        scrollback.toggled.connect(lambda on: (resume.setEnabled(on), self._style("scrollback", on)))
+        self.auto_live_box = QCheckBox()
+        self.auto_live_box.setChecked(o.scrollback_auto_live)
+        self.resume_spin = self._spin(1, 600, max(1, o.scrollback_resume_s),
+                                      lambda v: self._style("scrollback_resume_s", v), " s")
+        scrollback.toggled.connect(lambda on: (self._style("scrollback", on), self._sync_scrollback_controls()))
+        self.auto_live_box.toggled.connect(
+            lambda on: (self._style("scrollback_auto_live", on), self._sync_scrollback_controls()))
+        self._sync_scrollback_controls()
         text_c = ColorButton(o.text_color)
         text_c.changed.connect(lambda c: self._style("text_color", c))
         partial_c = ColorButton(o.partial_color)
@@ -589,7 +594,9 @@ class MainWindow(QMainWindow):
             card(
                 section("Scrollback"),
                 form_row("Mouse-wheel scrollback", scrollback, "Scroll over the overlay to reread about 10 minutes"),
-                form_row("Return to live after", resume, "Seconds without scrolling; 0 stays until you scroll down"),
+                form_row("Return to live automatically", self.auto_live_box,
+                         "Same as the “Live” switch shown when you hover over the overlay"),
+                form_row("Return to live after", self.resume_spin, "Seconds without scrolling"),
             ),
         )
 
@@ -607,6 +614,18 @@ class MainWindow(QMainWindow):
         self.preview.apply_style(self.config.overlay)
         self.style_changed.emit()
         self._changed()
+
+    def _sync_scrollback_controls(self) -> None:
+        o = self.config.overlay
+        self.auto_live_box.setEnabled(o.scrollback)
+        self.resume_spin.setEnabled(o.scrollback and o.scrollback_auto_live)
+
+    def sync_auto_live(self) -> None:
+        """The overlay's hover "Live" switch was clicked; reflect it without re-emitting."""
+        self.auto_live_box.blockSignals(True)
+        self.auto_live_box.setChecked(self.config.overlay.scrollback_auto_live)
+        self.auto_live_box.blockSignals(False)
+        self._sync_scrollback_controls()
 
     def sync_overlay_width(self) -> None:
         """The overlay was resized by dragging; reflect it without re-emitting."""

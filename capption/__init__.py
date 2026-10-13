@@ -1,3 +1,3 @@
 """Capption: local real-time captions for one application's audio."""
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"

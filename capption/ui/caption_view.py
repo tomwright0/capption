@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPainter, QPainterPath, 
 from PySide6.QtWidgets import QWidget
 
 from ..config import OverlayConfig
+from . import theme
 
 PAD_X = 22
 PAD_Y = 14
@@ -31,6 +32,7 @@ class CaptionView(QWidget):
         self._back = 0  # lines scrolled back from the newest (0 = live)
         self._text_alpha = 1.0
         self.highlight_edges = False  # set by the overlay while hovering resize edges
+        self.show_controls = False  # set by the overlay while hovered: shows the "Live" toggle
 
         self._scroll_anim = QVariantAnimation(self, duration=220, easingCurve=QEasingCurve.Type.OutCubic)
         self._scroll_anim.valueChanged.connect(self._set_scroll)
@@ -54,7 +56,7 @@ class CaptionView(QWidget):
         self._line_count = len(self._layout_lines()[1])
         if not style.scrollback:
             self.go_live()
-        elif self._resume.isActive():
+        elif self._back:
             self._restart_resume_timer()
         self.setFixedHeight(self.preferred_height())
         self.update()
@@ -120,7 +122,7 @@ class CaptionView(QWidget):
         self.update()
 
     def _restart_resume_timer(self) -> None:
-        if self._style.scrollback_resume_s > 0:
+        if self._style.scrollback_auto_live and self._style.scrollback_resume_s > 0:
             self._resume.start(int(self._style.scrollback_resume_s * 1000))
         else:
             self._resume.stop()  # stay scrolled back until the user scrolls down
@@ -207,7 +209,44 @@ class CaptionView(QWidget):
             edge = QColor(255, 255, 255, 60)
             p.setPen(edge)
             p.drawPath(path)
+        p.save()
+        self._paint_text(p, path)
+        p.restore()
+        if self.show_controls and self._style.scrollback:
+            self._paint_live_toggle(p)
 
+    def live_toggle_rect(self) -> QRectF:
+        """Hover-only "Live" switch in the top-right corner (auto return to live)."""
+        h = max(18.0, round(self._font.pixelSize() * 0.6))
+        w = h * 3.4
+        return QRectF(self.width() - w - 10, 8, w, h)
+
+    def _paint_live_toggle(self, p: QPainter) -> None:
+        on = self._style.scrollback_auto_live
+        r = self.live_toggle_rect()
+        h = r.height()
+        p.setOpacity(1.0)
+        bg = QPainterPath()
+        bg.addRoundedRect(r, h / 2, h / 2)
+        fill = QColor(0, 0, 0, 150)
+        p.fillPath(bg, fill)
+        # Mini switch on the right, label on the left.
+        sw = QRectF(r.right() - h * 1.5 - 3, r.top() + 3, h * 1.5, h - 6)
+        track = QPainterPath()
+        track.addRoundedRect(sw, sw.height() / 2, sw.height() / 2)
+        p.fillPath(track, QColor(theme.ACCENT) if on else QColor(255, 255, 255, 60))
+        knob_d = sw.height() - 4
+        knob_x = sw.right() - knob_d - 2 if on else sw.left() + 2
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#FFFFFF") if on else QColor(255, 255, 255, 170))
+        p.drawEllipse(QRectF(knob_x, sw.top() + 2, knob_d, knob_d))
+        font = QFont(self._font)
+        font.setPixelSize(max(10, int(h * 0.55)))
+        p.setFont(font)
+        p.setPen(QColor(255, 255, 255, 235 if on else 150))
+        p.drawText(QRectF(r.left(), r.top(), sw.left() - r.left(), h), Qt.AlignmentFlag.AlignCenter, "Live")
+
+    def _paint_text(self, p: QPainter, path: QPainterPath) -> None:
         layout, lines = self._layout_lines()
         if not lines or self._text_alpha <= 0.01:
             return

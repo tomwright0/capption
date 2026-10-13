@@ -108,3 +108,42 @@ def test_layout_is_cached(view):
     assert view._layout_lines() is first
     view.set_text(SENTENCE * 13, "")
     assert view._layout_lines() is not first
+
+
+def test_auto_live_off_keeps_view_scrolled_back(view):
+    view.apply_style(OverlayConfig(max_lines=3, fade_after_s=0, scrollback_auto_live=False))
+    wheel(view, 2)
+    assert not view._resume.isActive()
+    view.apply_style(OverlayConfig(max_lines=3, fade_after_s=0, scrollback_auto_live=True, scrollback_resume_s=7))
+    assert view._resume.isActive() and view._resume.interval() == 7_000
+
+
+def test_hover_live_switch_toggles_config(app):
+    from PySide6.QtCore import QPointF
+    from PySide6.QtGui import QMouseEvent
+    from PySide6.QtCore import QEvent
+
+    from capption.ui.overlay import OverlayWindow
+
+    cfg = OverlayConfig(max_lines=3, fade_after_s=0)
+    overlay = OverlayWindow(cfg)
+    overlay.show()
+    seen = []
+    overlay.auto_live_toggled.connect(seen.append)
+    center = overlay.view.live_toggle_rect().center()
+
+    def click():
+        ev = QMouseEvent(QEvent.Type.MouseButtonPress, center, overlay.mapToGlobal(center),
+                         Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+        overlay.mousePressEvent(ev)
+
+    click()  # not hovered: the switch is hidden, so this is a drag start, not a toggle
+    overlay.mouseReleaseEvent(QMouseEvent(QEvent.Type.MouseButtonRelease, center, overlay.mapToGlobal(center),
+                                          Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton,
+                                          Qt.KeyboardModifier.NoModifier))
+    assert seen == [] and cfg.scrollback_auto_live
+    overlay.view.show_controls = True
+    click()
+    assert seen == [False] and not cfg.scrollback_auto_live
+    click()
+    assert seen == [False, True] and cfg.scrollback_auto_live
