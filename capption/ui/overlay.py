@@ -53,6 +53,10 @@ class OverlayWindow(QWidget):
     def set_text(self, confirmed: str, partial: str) -> None:
         self.view.set_text(confirmed, partial)
 
+    def wheelEvent(self, e) -> None:
+        # The view ignores the mouse (the overlay handles drag/resize), so pass scrolling on.
+        self.view.wheelEvent(e)
+
     # -- placement ---------------------------------------------------------------
     def restore_position(self) -> None:
         screens = {screen_key(s): s for s in QGuiApplication.screens()}

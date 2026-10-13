@@ -11,12 +11,14 @@ from ..config import OverlayConfig
 PAD_X = 22
 PAD_Y = 14
 RADIUS = 16
+SCROLLBACK_RESUME_MS = 10_000  # snap back to live captions after this long without scrolling
 LINE_SEP = " "  # QTextLayout's hard line break
 
 
 class CaptionView(QWidget):
     """Paints the last ``max_lines`` wrapped lines; confirmed solid, partial dimmed.
-    New lines slide up; text fades out after a period of silence."""
+    New lines slide up; text fades out after a period of silence. The mouse wheel scrolls
+    back through the kept history; it returns to live at the bottom or after a pause."""
 
     def __init__(self, style: OverlayConfig, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -26,6 +28,7 @@ class CaptionView(QWidget):
         self._partial = ""
         self._line_count = 0
         self._scroll = 0.0  # pixels still to scroll (animates to 0)
+        self._back = 0  # lines scrolled back from the newest (0 = live)
         self._text_alpha = 1.0
         self.highlight_edges = False  # set by the overlay while hovering resize edges
 
@@ -35,6 +38,8 @@ class CaptionView(QWidget):
         self._fade_anim.valueChanged.connect(self._set_alpha)
         self._idle = QTimer(self, singleShot=True)
         self._idle.timeout.connect(self._fade_out)
+        self._resume = QTimer(self, singleShot=True, interval=SCROLLBACK_RESUME_MS)
+        self._resume.timeout.connect(self.go_live)
         self.apply_style(style)
 
     # -- public API ------------------------------------------------------------
@@ -57,13 +62,51 @@ class CaptionView(QWidget):
         lines = len(self._layout_lines()[1])
         grew = lines - self._line_count
         self._line_count = lines
-        if 0 < grew <= self._style.max_lines and self.isVisible():
+        if not (confirmed or partial):
+            self._back = 0
+        elif self._back:
+            # Stay on the same text while new lines arrive below.
+            self._back = max(0, min(self._back + grew, lines - self._style.max_lines))
+        elif 0 < grew <= self._style.max_lines and self.isVisible():
             self._scroll_anim.stop()
             self._scroll_anim.setStartValue(self._scroll + grew * self._line_height())
             self._scroll_anim.setEndValue(0.0)
             self._scroll_anim.start()
         if confirmed or partial:
             self._fade_in()
+        self.update()
+
+    @property
+    def scrolled_back(self) -> int:
+        return self._back
+
+    def go_live(self) -> None:
+        self._resume.stop()
+        if self._back:
+            self._back = 0
+            self._fade_in()
+            self.update()
+
+    def wheelEvent(self, e) -> None:
+        dy = e.angleDelta().y()
+        e.accept()
+        if not dy:
+            return
+        steps = round(dy / 120) or (1 if dy > 0 else -1)  # touchpads send small deltas
+        max_back = max(0, self._line_count - self._style.max_lines)
+        back = max(0, min(max_back, self._back + steps))
+        if back == self._back:
+            return
+        self._back = back
+        self._scroll_anim.stop()
+        self._scroll = 0.0
+        if back:
+            self._idle.stop()  # don't fade while reading history
+            self._fade_anim.stop()
+            self._text_alpha = 1.0
+            self._resume.start()
+        else:
+            self.go_live()
         self.update()
 
     # -- animation helpers -----------------------------------------------------
@@ -82,7 +125,8 @@ class CaptionView(QWidget):
             self._animate_alpha(1.0, 180)
 
     def _fade_out(self) -> None:
-        self._animate_alpha(0.0, 600)
+        if not self._back:
+            self._animate_alpha(0.0, 600)
 
     def _animate_alpha(self, target: float, ms: int) -> None:
         self._fade_anim.stop()
@@ -145,12 +189,34 @@ class CaptionView(QWidget):
         p.setOpacity(self._text_alpha)
         p.setPen(QColor(self._style.text_color))
         visible = self._style.max_lines
-        first = max(0, len(lines) - visible)
+        back = min(self._back, max(0, len(lines) - visible))
+        end = len(lines) - back
+        first = max(0, end - visible)
         top_of_first = lines[first].position().y()
         # Bottom-align so a single line sits where the last line of a full box would.
-        shown = len(lines) - first
+        shown = end - first
         y0 = PAD_Y + (visible - shown) * self._line_height() - top_of_first + self._scroll
         # Draw one extra line above while scrolling so it slides out instead of popping.
         start = max(0, first - (1 if self._scroll > 0 else 0))
-        for line in lines[start:]:
+        for line in lines[start:end]:
             line.draw(p, QPointF(PAD_X, y0))
+        if back:
+            self._paint_live_pill(p, back)
+
+    def _paint_live_pill(self, p: QPainter, back: int) -> None:
+        """Marker while scrolled back: how far up, and that scrolling down returns to live."""
+        p.setOpacity(1.0)
+        font = QFont(self._font)
+        font.setPixelSize(max(10, int(self._font.pixelSize() * 0.45)))
+        p.setFont(font)
+        text = f"↓ live  ({back} up)"
+        fm = QFontMetricsF(font)
+        w, h = fm.horizontalAdvance(text) + 16, fm.height() + 6
+        r = QRectF(self.width() - w - 10, self.height() - h - 8, w, h)
+        pill = QColor(self._style.text_color)
+        pill.setAlphaF(0.18)
+        path = QPainterPath()
+        path.addRoundedRect(r, h / 2, h / 2)
+        p.fillPath(path, pill)
+        p.setPen(QColor(self._style.text_color))
+        p.drawText(r, Qt.AlignmentFlag.AlignCenter, text)
