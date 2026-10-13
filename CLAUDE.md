@@ -77,17 +77,19 @@ tests/         unit tests (run anywhere); tests/windows/ for @pytest.mark.window
   Target exit, stop and bad pid map to the right SourceEnd. 39 tests pass (5 in tests/windows).
   Partials sometimes show Whisper hallucinations ("Captions by Red Bee Media") at segment start;
   LocalAgreement kept them out of committed text in testing.
-  Not yet tested: hotkeys firing, click-through, tray, auto-reattach after app restart in the GUI,
-  VB-Cable fallback, OOM fallback.
+  Also verified 2026-10-13: global hotkeys (injected via SendInput), click-through (WindowFromPoint),
+  tray start/stop, auto-attach on launch, reattach after the target restarts, transcripts,
+  CPU fallback (`fall_back_to_cpu`), mic capture, download progress, and the frozen PyInstaller
+  build (CUDA + auto-attach + transcript). Not tested: a real GPU OOM, VB-Cable fallback (not installed).
+- **Packaging/CI:** `capption.spec` (onedir, ~1 GB) and `.github/workflows/build.yml` (windows-latest:
+  tests, helper, PyInstaller, artifact; tags `v*` publish a Release zip). Repo is public.
+  Windows tests skip on CI when there is no audio stack.
 
-## Next steps (in order)
-1. Manually test hotkeys, click-through, tray, reattach (see Status).
-2. `capption.spec` (PyInstaller): include `capption/assets`, the faster_whisper assets (silero ONNX),
-   the helper exe and nvidia DLLs. It must build on a GPU-less runner.
-3. `.github/workflows/build.yml` on windows-latest: install requirements-windows + dev, pytest,
-   build the helper with CMake, build with PyInstaller, upload the artifact on push/tag.
-4. README.md (setup, build, troubleshooting) and WINDOWS_TESTING.md (manual checklist: loopback on
-   LTSC 2024, CUDA on the 5070, click-through, hotkeys, tray, reattach on app restart, OOM fallback).
+## Next steps
+1. Watch the first CI run and fix whatever the hosted runner trips on.
+2. WINDOWS_TESTING.md (manual checklist) if wanted.
+3. Possible: drop non-Latin words when the language is fixed to a Latin-script one (seen once:
+   "Cannot見て" after attaching mid-sentence with language=en).
 
 ## Commands
 ```

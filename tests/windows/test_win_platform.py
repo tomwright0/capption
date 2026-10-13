@@ -1,5 +1,6 @@
 """Real Windows API checks. Capture tests need the built helper and an audio output device."""
 
+import os
 import subprocess
 import sys
 import threading
@@ -18,6 +19,9 @@ from capption.platform import windows
 pytestmark = pytest.mark.windows
 
 needs_helper = pytest.mark.skipif(helper_path() is None, reason="capption-loopback.exe not built")
+needs_loopback = pytest.mark.skipif(
+    helper_path() is None or not probe()[0], reason="process loopback unavailable here"
+)
 
 
 def test_sequence_to_vk():
@@ -28,14 +32,26 @@ def test_sequence_to_vk():
     assert windows.sequence_to_vk("") is None
 
 
+def _ci_skip(exc: object) -> None:
+    # Hosted CI runners have no audio service/endpoints; real machines must pass.
+    if os.environ.get("CI"):
+        pytest.skip(f"no audio stack on CI: {exc}")
+
+
 def test_enumerate_sessions_runs():
-    sessions = windows.enumerate_sessions()
+    try:
+        sessions = windows.enumerate_sessions()
+    except (OSError, windows.comtypes.COMError) as exc:
+        _ci_skip(exc)
+        raise
     assert all(s.pid > 0 for s in sessions)
 
 
 @needs_helper
 def test_probe():
     ok, message = probe()
+    if not ok:
+        _ci_skip(message)
     assert ok, message
 
 
@@ -49,7 +65,7 @@ def _has_output_device() -> bool:
         return False
 
 
-@needs_helper
+@needs_loopback
 @pytest.mark.slow
 def test_capture_child_process(speech_wav):
     if not _has_output_device():
@@ -81,7 +97,7 @@ def test_capture_child_process(speech_wav):
         player.kill()
 
 
-@needs_helper
+@needs_loopback
 def test_stop_is_quick():
     sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
     try:

@@ -1,0 +1,70 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # attach the build to a GitHub Release on tags
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-*.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-windows.txt -r requirements-dev.txt
+
+      - name: Build loopback helper
+        run: |
+          cmake -S native/loopback -B native/loopback/build -A x64
+          cmake --build native/loopback/build --config Release
+
+      - name: Unit tests
+        run: python -m pytest -q
+
+      - name: Build app (PyInstaller)
+        run: pyinstaller capption.spec --noconfirm
+
+      - name: Smoke-test the bundle
+        shell: pwsh
+        run: |
+          $required = @(
+            "dist/Capption/Capption.exe",
+            "dist/Capption/_internal/capption-loopback.exe",
+            "dist/Capption/_internal/faster_whisper/assets/silero_vad_v6.onnx",
+            "dist/Capption/_internal/nvidia/cublas/bin/cublasLt64_12.dll",
+            "dist/Capption/_internal/nvidia/cuda_runtime/bin/cudart64_12.dll"
+          )
+          foreach ($f in $required) { if (-not (Test-Path $f)) { throw "missing $f" } }
+          "{0:N0} MB" -f ((Get-ChildItem dist/Capption -Recurse | Measure-Object Length -Sum).Sum / 1MB)
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Capption-win64
+          path: dist/Capption
+          retention-days: 14
+
+      - name: Zip bundle
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: Compress-Archive -Path dist/Capption -DestinationPath "Capption-${{ github.ref_name }}-win64.zip"
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" "Capption-${{ github.ref_name }}-win64.zip" --title "Capption ${{ github.ref_name }}" --generate-notes
