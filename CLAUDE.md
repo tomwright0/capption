@@ -68,7 +68,10 @@ tests/         unit tests (run anywhere); tests/windows/ for @pytest.mark.window
   the Mac (macOS 27, build 26A428) under PySide6 6.11.2: `QDir.entryList()` returned nothing for the
   plugin directory, so no platform plugin loaded. 6.11.2 was a bad pin: uv's cross-platform resolve
   assumed macOS 12 and skipped the 6.12.0 `macosx_14_0_universal2` wheel. Now pinned to 6.12.0
-  everywhere; the macOS launch has not been retried yet.
+  everywhere. With 6.12.0 the UI launches on macOS and every page and the overlay render correctly
+  (checked via `QWidget.grab()` screenshots). Not yet tested: pressing Start in the GUI, and the
+  last tweaks (model-row button alignment, font picker showing the resolved family).
+  Seen once: a screenshot script hung on exit after `app.quit()`. Not investigated.
   First job on Windows: launch the UI, fix whatever breaks, and screenshot every page plus the overlay.
 - **Stage 3 (Windows): not started.**
 

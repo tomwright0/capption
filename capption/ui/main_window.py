@@ -7,7 +7,7 @@ import threading
 from collections.abc import Callable
 
 from PySide6.QtCore import QFileInfo, QLocale, QObject, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QKeySequence
+from PySide6.QtGui import QColor, QFont, QFontInfo, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -171,6 +171,13 @@ class ModelRow(QFrame):
         self.action.setFixedWidth(110)
         self.delete = QPushButton("Delete", objectName="Danger")
         self.delete.setFixedWidth(80)
+        # Keep columns aligned across rows when a button is hidden.
+        action_policy = self.action.sizePolicy()
+        action_policy.setRetainSizeWhenHidden(True)
+        self.action.setSizePolicy(action_policy)
+        delete_policy = self.delete.sizePolicy()
+        delete_policy.setRetainSizeWhenHidden(True)
+        self.delete.setSizePolicy(delete_policy)
         self.action.clicked.connect(self._on_action)
         self.delete.clicked.connect(lambda: self.delete_clicked.emit(self.name))
         grid.addWidget(title, 0, 0)
@@ -515,7 +522,8 @@ class MainWindow(QMainWindow):
         ph.addWidget(self.preview)
 
         font = QFontComboBox()
-        font.setCurrentFont(QFont(o.font_family))
+        # Show the family Qt actually resolves to (e.g. Segoe UI doesn't exist on macOS).
+        font.setCurrentFont(QFont(QFontInfo(QFont(o.font_family)).family()))
         font.currentFontChanged.connect(lambda f: self._style("font_family", f.family()))
         size = self._spin(10, 96, o.font_size, lambda v: self._style("font_size", v), " px")
         lines = self._spin(1, 6, o.max_lines, lambda v: self._style("max_lines", v))
