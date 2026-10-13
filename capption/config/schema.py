@@ -72,6 +72,7 @@ class AppConfig:
     transcript: TranscriptConfig = field(default_factory=TranscriptConfig)
     custom_models: list[str] = field(default_factory=list)
     debug_panel: bool = False
+    check_updates: bool = True  # one GitHub API request at startup
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

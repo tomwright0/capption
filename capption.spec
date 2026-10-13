@@ -6,6 +6,7 @@
 # Output: dist\Capption\Capption.exe. Builds fine on a GPU-less machine: the CUDA DLLs come
 # from the nvidia-*-cu12 wheels and are only loaded at runtime.
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -15,6 +16,10 @@ ROOT = Path(SPECPATH)
 HELPER = ROOT / "native" / "loopback" / "build" / "Release" / "capption-loopback.exe"
 if not HELPER.is_file():
     sys.exit(f"Missing {HELPER}; build native/loopback first.")
+
+# Exe icon rendered from the in-code icon (capption/ui/icon.py); the installer uses it too.
+ICON = ROOT / "build" / "capption.ico"
+subprocess.run([sys.executable, str(ROOT / "tools" / "make_icon.py"), str(ICON)], check=True)
 
 
 def nvidia_dlls():
@@ -64,6 +69,7 @@ exe = EXE(
     exclude_binaries=True,
     name="Capption",
     console=False,
+    icon=str(ICON),
     upx=False,
 )
 coll = COLLECT(exe, a.binaries, a.datas, name="Capption", upx=False)

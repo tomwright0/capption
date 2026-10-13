@@ -102,7 +102,11 @@ def local_path(name: str, root: Path | None = None) -> str | None:
 def remote_size(name: str, root: Path | None = None) -> int:
     """Total download size (bytes), via a dry run against the Hub."""
     from huggingface_hub import snapshot_download
+    from huggingface_hub.utils import disable_progress_bars
 
+    # The dry run draws "Fetching N files" bars on stderr; download() uses its own tqdm class,
+    # so this doesn't affect download progress.
+    disable_progress_bars()
     files = snapshot_download(
         repo_id_for(name), cache_dir=root or models_dir(), allow_patterns=ALLOW_PATTERNS, dry_run=True
     )

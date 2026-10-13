@@ -44,6 +44,7 @@ from ..platform import Platform
 from . import theme
 from .caption_view import CaptionView
 from .controller import CaptionController
+from .updates import UpdatesCard
 
 log = logging.getLogger(__name__)
 
@@ -749,6 +750,8 @@ class MainWindow(QMainWindow):
         device.setCurrentIndex(max(0, device.findData(self.config.asr.device)))
         device.currentIndexChanged.connect(lambda: self._set_asr("device", device.currentData()))
 
+        self.updates = UpdatesCard(self.config, self._changed)
+
         debug = QCheckBox()
         debug.setChecked(self.config.debug_panel)
         debug.toggled.connect(self._toggle_debug)
@@ -760,6 +763,7 @@ class MainWindow(QMainWindow):
             card(section("Performance"),
                  form_row("Compute device", device, "Falls back to CPU automatically if CUDA fails"),
                  form_row("Debug panel", debug, "Queue depth, inference time and realtime factor")),
+            self.updates,
         ]
         if not self.platform.capture_support().process_loopback:
             self.dev_file_label = muted(self.config.capture.dev_file or "Built-in sample")

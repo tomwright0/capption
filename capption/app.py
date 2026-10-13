@@ -10,7 +10,7 @@ import sys
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon
 
-from . import __version__
+from . import __version__, updater
 from .captions import CaptionBuffer
 from .config import ConfigStore
 from .logging_setup import setup_logging
@@ -25,6 +25,7 @@ from .ui.tray import Tray
 log = logging.getLogger(__name__)
 
 AUTO_REATTACH_POLL_MS = 3000
+UPDATE_CHECK_DELAY_MS = 5000
 
 
 class CapptionApp:
@@ -74,6 +75,26 @@ class CapptionApp:
         if self.config.capture.last_exe:
             self._auto.start()
             QTimer.singleShot(0, self._auto_attach)
+
+        updates = self.window.updates
+        updates.install_ready.connect(self._install_update)
+        updates.update_found.connect(self._notify_update)
+        if self.config.check_updates:
+            QTimer.singleShot(UPDATE_CHECK_DELAY_MS, updates.check)
+
+    def _notify_update(self, release) -> None:
+        if self.tray:
+            self.tray.showMessage("Capption", f"Version {release.tag.lstrip('v')} is available. "
+                                  "Update from Settings → Advanced.", app_icon(), 8000)
+
+    def _install_update(self, path) -> None:
+        try:
+            updater.run_installer(path)
+        except OSError as exc:
+            log.exception("Could not start the installer")
+            self.window.updates.status.setText(f"Could not start the installer: {exc}")
+            return
+        self.quit()  # release our files so the installer can replace them
 
     # -- behaviour -----------------------------------------------------------------
     def _on_update(self, update) -> None:

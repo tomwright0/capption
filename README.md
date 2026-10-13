@@ -50,10 +50,16 @@ with no virtual cables, no changing the default device and no routing.
 
 ## Install
 
-Download `Capption-<version>-win64.zip` from
-[Releases](https://github.com/tomwright0/capption/releases), unzip it anywhere, and run
-`Capption.exe`. Builds from `main` are also available as artifacts on the
-[Actions](https://github.com/tomwright0/capption/actions) tab.
+Download **`Capption-Setup-<version>.exe`** from
+[Releases](https://github.com/tomwright0/capption/releases) and run it. It installs for your
+user only (no admin prompt) into `%LOCALAPPDATA%\Programs\Capption`, with optional desktop and
+sign-in shortcuts. A portable zip is attached to each release too. Windows SmartScreen may warn
+because the exe isn't code-signed: choose **More info → Run anyway**.
+
+**Updates:** Capption checks GitHub for a new release on startup. You can turn this off under
+**Advanced**. When an update exists, **Advanced → Update** downloads the new installer, installs
+it over the old version, and restarts Capption. Models and settings are kept. Portable copies
+just get a link to the download page.
 
 On first start, open **Models** and download one:
 
@@ -98,6 +104,7 @@ cmake --build native/loopback/build --config Release
 .venv\Scripts\python -m pytest -q
 .venv\Scripts\python -m capption                 # run the app
 .venv\Scripts\pyinstaller capption.spec --noconfirm   # -> dist\Capption\Capption.exe
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=0.1.0 installer\capption.iss  # -> dist\Capption-Setup-0.1.0.exe
 ```
 
 Console tools for testing without the UI:
