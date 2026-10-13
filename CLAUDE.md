@@ -81,14 +81,20 @@ tests/         unit tests (run anywhere); tests/windows/ for @pytest.mark.window
   tray start/stop, auto-attach on launch, reattach after the target restarts, transcripts,
   CPU fallback (`fall_back_to_cpu`), mic capture, download progress, and the frozen PyInstaller
   build (CUDA + auto-attach + transcript). Not tested: a real GPU OOM, VB-Cable fallback (not installed).
-- **Packaging/CI:** `capption.spec` (onedir, ~1 GB) and `.github/workflows/build.yml` (windows-latest:
-  tests, helper, PyInstaller, artifact; tags `v*` publish a Release zip). Repo is public.
-  Windows tests skip on CI when there is no audio stack.
+- **Packaging/CI/release:** `capption.spec` (onedir, ~1 GB) + `installer/capption.iss` (Inno Setup,
+  per-user Setup.exe ~560 MB). `.github/workflows/build.yml`: tests, helper, PyInstaller, artifact on
+  every push; on `v*` tags it checks tag == `capption.__version__`, builds Setup.exe + portable zip and
+  publishes a Release. **v0.1.0 released 2026-10-13**; the CI-built installer was verified on this machine.
+  Repo is public. Windows tests skip on CI when there is no audio stack.
+- **Updates:** `updater.py` + `ui/updates.py` check GitHub Releases on startup (toggle in Advanced),
+  download Setup.exe, run it with `/SILENT /launch=1`, and quit; the installer relaunches the app.
+  Verified end to end (0.1.0 -> 0.1.1 via a local server, `CAPPTION_UPDATE_URL`).
+  To release: bump `capption/__init__.py:__version__`, commit, tag `vX.Y.Z`, push the tag.
 
 ## Next steps
-1. Watch the first CI run and fix whatever the hosted runner trips on.
-2. WINDOWS_TESTING.md (manual checklist) if wanted.
-3. Possible: drop non-Latin words when the language is fixed to a Latin-script one (seen once:
+1. Stray stderr lines (HF "unauthenticated requests" warning) still end up in capption.log in
+   the frozen build; harmless.
+2. Possible: drop non-Latin words when the language is fixed to a Latin-script one (seen once:
    "Cannot見て" after attaching mid-sentence with language=en).
 
 ## Commands
