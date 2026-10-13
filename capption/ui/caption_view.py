@@ -11,14 +11,14 @@ from ..config import OverlayConfig
 PAD_X = 22
 PAD_Y = 14
 RADIUS = 16
-SCROLLBACK_RESUME_MS = 10_000  # snap back to live captions after this long without scrolling
 LINE_SEP = " "  # QTextLayout's hard line break
 
 
 class CaptionView(QWidget):
     """Paints the last ``max_lines`` wrapped lines; confirmed solid, partial dimmed.
     New lines slide up; text fades out after a period of silence. The mouse wheel scrolls
-    back through the kept history; it returns to live at the bottom or after a pause."""
+    back through the kept history (``style.scrollback``); it returns to live at the bottom or
+    after ``style.scrollback_resume_s`` without scrolling."""
 
     def __init__(self, style: OverlayConfig, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -38,8 +38,9 @@ class CaptionView(QWidget):
         self._fade_anim.valueChanged.connect(self._set_alpha)
         self._idle = QTimer(self, singleShot=True)
         self._idle.timeout.connect(self._fade_out)
-        self._resume = QTimer(self, singleShot=True, interval=SCROLLBACK_RESUME_MS)
+        self._resume = QTimer(self, singleShot=True)
         self._resume.timeout.connect(self.go_live)
+        self._layout_cache: tuple[tuple, tuple[QTextLayout, list]] | None = None
         self.apply_style(style)
 
     # -- public API ------------------------------------------------------------
@@ -49,6 +50,12 @@ class CaptionView(QWidget):
         self._font.setPixelSize(max(8, style.font_size))
         self._font.setWeight(QFont.Weight.DemiBold)
         self._metrics = QFontMetricsF(self._font)
+        self._layout_cache = None
+        self._line_count = len(self._layout_lines()[1])
+        if not style.scrollback:
+            self.go_live()
+        elif self._resume.isActive():
+            self._restart_resume_timer()
         self.setFixedHeight(self.preferred_height())
         self.update()
 
@@ -89,6 +96,9 @@ class CaptionView(QWidget):
 
     def wheelEvent(self, e) -> None:
         dy = e.angleDelta().y()
+        if not self._style.scrollback:
+            e.ignore()
+            return
         e.accept()
         if not dy:
             return
@@ -104,10 +114,16 @@ class CaptionView(QWidget):
             self._idle.stop()  # don't fade while reading history
             self._fade_anim.stop()
             self._text_alpha = 1.0
-            self._resume.start()
+            self._restart_resume_timer()
         else:
             self.go_live()
         self.update()
+
+    def _restart_resume_timer(self) -> None:
+        if self._style.scrollback_resume_s > 0:
+            self._resume.start(int(self._style.scrollback_resume_s * 1000))
+        else:
+            self._resume.stop()  # stay scrolled back until the user scrolls down
 
     # -- animation helpers -----------------------------------------------------
     def _set_scroll(self, v: float) -> None:
@@ -140,6 +156,16 @@ class CaptionView(QWidget):
         return self._metrics.lineSpacing() * 1.12
 
     def _layout_lines(self) -> tuple[QTextLayout, list]:
+        """Wrapped lines for the whole history. Cached: paints (every animation frame) reuse
+        it, and it is rebuilt only when the text, width or style changes."""
+        key = (self._confirmed, self._partial, self.width(), self._style.partial_color)
+        if self._layout_cache is not None and self._layout_cache[0] == key:
+            return self._layout_cache[1]
+        result = self._build_layout()
+        self._layout_cache = (key, result)
+        return result
+
+    def _build_layout(self) -> tuple[QTextLayout, list]:
         text = (self._confirmed + self._partial).replace("\n", LINE_SEP)
         layout = QTextLayout(text, self._font)
         opt = QTextOption()

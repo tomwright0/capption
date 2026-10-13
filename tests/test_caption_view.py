@@ -77,3 +77,34 @@ def test_overlay_forwards_wheel_to_view(app):
     overlay.set_text(SENTENCE * 12, "")
     wheel(overlay, 2)  # the view itself ignores the mouse; the overlay must pass it on
     assert overlay.view.scrolled_back == 2
+
+
+def test_scrollback_toggle(app):
+    v = CaptionView(OverlayConfig(max_lines=3, fade_after_s=0, scrollback=False))
+    v.resize(500, v.preferred_height())
+    v.set_text(SENTENCE * 12, "")
+    wheel(v, 2)
+    assert v.scrolled_back == 0
+    # Turning it off while scrolled back returns to live.
+    v.apply_style(OverlayConfig(max_lines=3, fade_after_s=0, scrollback=True))
+    wheel(v, 2)
+    assert v.scrolled_back == 2
+    v.apply_style(OverlayConfig(max_lines=3, fade_after_s=0, scrollback=False))
+    assert v.scrolled_back == 0
+
+
+def test_resume_timer_setting(view):
+    view.apply_style(OverlayConfig(max_lines=3, fade_after_s=0, scrollback_resume_s=25))
+    wheel(view, 1)
+    assert view._resume.isActive() and view._resume.interval() == 25_000
+    view.apply_style(OverlayConfig(max_lines=3, fade_after_s=0, scrollback_resume_s=0))
+    wheel(view, 1)
+    assert not view._resume.isActive()  # 0 = stay until scrolled down
+    assert view.scrolled_back == 2
+
+
+def test_layout_is_cached(view):
+    first = view._layout_lines()
+    assert view._layout_lines() is first
+    view.set_text(SENTENCE * 13, "")
+    assert view._layout_lines() is not first

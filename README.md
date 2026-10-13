@@ -33,8 +33,9 @@ with no virtual cables, no changing the default device and no routing.
   GPU runs out of memory mid-session.
 - Overlay: frameless, draggable, resizable, snaps to screen edges, and remembers its position
   per monitor. Click-through mode lets you click the window underneath.
-- Scrollback: use the mouse wheel over the overlay to reread recent captions. It returns to live
-  when you scroll back down, or after 10 seconds without scrolling.
+- Scrollback: use the mouse wheel over the overlay to reread about the last 10 minutes. It returns
+  to live when you scroll back down, or after a pause you can set (10 s by default, or never).
+  You can turn it off under **Appearance → Scrollback**.
 - Reattaches automatically when the captioned app restarts, and on launch auto-starts with the
   app you used last.
 - Global hotkeys, a tray icon, and optional `.txt` / `.srt` transcripts for each session.

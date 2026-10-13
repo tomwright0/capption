@@ -5,7 +5,7 @@ from __future__ import annotations
 from .asr.agreement import Word
 from .asr.streamer import StreamUpdate
 
-MAX_CHARS = 1500  # history kept for display; old text is dropped from the front
+MAX_CHARS = 10_000  # ~10 min of speech kept for display and scrollback; older text is dropped
 
 
 class CaptionBuffer:

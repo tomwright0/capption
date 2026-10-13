@@ -21,6 +21,8 @@ class OverlayConfig:
     click_through: bool = False
     visible: bool = True
     fade_after_s: float = 8.0  # fade text out after this long without speech (0 = never)
+    scrollback: bool = True  # mouse wheel over the overlay scrolls back through recent captions
+    scrollback_resume_s: int = 10  # return to live after this long without scrolling (0 = never)
     # Position keyed by monitor identity (QScreen name + geometry) -> [x, y] relative to that screen
     positions: dict[str, list[int]] = field(default_factory=dict)
     last_screen: str | None = None

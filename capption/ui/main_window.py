@@ -551,6 +551,11 @@ class MainWindow(QMainWindow):
         width = self._spin(240, 3000, o.width, lambda v: self._style("width", v), " px")
         self.width_spin = width
         fade = self._spin(0, 60, int(o.fade_after_s), lambda v: self._style("fade_after_s", float(v)), " s")
+        scrollback = QCheckBox()
+        scrollback.setChecked(o.scrollback)
+        resume = self._spin(0, 600, o.scrollback_resume_s, lambda v: self._style("scrollback_resume_s", v), " s")
+        resume.setEnabled(o.scrollback)
+        scrollback.toggled.connect(lambda on: (resume.setEnabled(on), self._style("scrollback", on)))
         text_c = ColorButton(o.text_color)
         text_c.changed.connect(lambda c: self._style("text_color", c))
         partial_c = ColorButton(o.partial_color)
@@ -580,6 +585,11 @@ class MainWindow(QMainWindow):
                 form_row("Lines shown", lines),
                 form_row("Width", width, "You can also drag the overlay's left/right edges"),
                 form_row("Fade after silence", fade, "0 keeps the last captions visible"),
+            ),
+            card(
+                section("Scrollback"),
+                form_row("Mouse-wheel scrollback", scrollback, "Scroll over the overlay to reread about 10 minutes"),
+                form_row("Return to live after", resume, "Seconds without scrolling; 0 stays until you scroll down"),
             ),
         )
 
