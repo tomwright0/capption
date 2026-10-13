@@ -170,14 +170,9 @@ class ModelRow(QFrame):
         self.action = QPushButton()
         self.action.setFixedWidth(110)
         self.delete = QPushButton("Delete", objectName="Danger")
-        self.delete.setFixedWidth(80)
-        # Keep columns aligned across rows when a button is hidden.
-        action_policy = self.action.sizePolicy()
-        action_policy.setRetainSizeWhenHidden(True)
-        self.action.setSizePolicy(action_policy)
-        delete_policy = self.delete.sizePolicy()
-        delete_policy.setRetainSizeWhenHidden(True)
-        self.delete.setSizePolicy(delete_policy)
+        self.delete.setFixedWidth(110)
+        # Only one of the two buttons is visible at a time; they share a column so every
+        # row's button lines up.
         self.action.clicked.connect(self._on_action)
         self.delete.clicked.connect(lambda: self.delete_clicked.emit(self.name))
         grid.addWidget(title, 0, 0)
@@ -185,8 +180,9 @@ class ModelRow(QFrame):
         grid.addWidget(self.size, 0, 1, Qt.AlignmentFlag.AlignRight)
         grid.addWidget(self.state, 1, 1, Qt.AlignmentFlag.AlignRight)
         grid.addWidget(self.action, 0, 2, 2, 1)
-        grid.addWidget(self.delete, 0, 3, 2, 1)
-        grid.addWidget(self.progress, 2, 0, 1, 4)
+        grid.addWidget(self.delete, 0, 2, 2, 1)
+        grid.addWidget(self.progress, 2, 0, 1, 3)
+        grid.setColumnMinimumWidth(2, 110)
         grid.setColumnStretch(0, 1)
         self._downloading = False
 
@@ -504,7 +500,8 @@ class MainWindow(QMainWindow):
             self.debug_label.setText(self.controller.describe_metrics(m))
 
     def _on_engine(self, info) -> None:
-        self.engine_label.setText(f"{info.model.split('/')[-1][:28]}\n{info.device} · {info.compute_type}")
+        # info.model may be a local snapshot path; show the configured name instead.
+        self.engine_label.setText(f"{self.config.asr.model.split('/')[-1][:28]}\n{info.device} · {info.compute_type}")
 
     # ---------------------------------------------------------------- Appearance page
     def _appearance_page(self) -> QWidget:

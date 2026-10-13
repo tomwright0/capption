@@ -16,7 +16,7 @@ env overrides `CAPPTION_CONFIG_DIR` / `CAPPTION_DATA_DIR`).
   big models (large-v3-turbo ~1.6 GB). `tiny` (~75 MB) is enough for pipeline testing.
 
 ## Decisions (agreed with user)
-- **Process loopback via a small C++ helper exe** (`native/loopback/`, not yet written), not comtypes.
+- **Process loopback via a small C++ helper exe** (`native/loopback/`), not comtypes.
   It uses `ActivateAudioInterfaceAsync` with `AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK` and
   `PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE`, takes `--pid N`, and writes float32 PCM to
   stdout. Python spawns it and reads the pipe. Reasons: COM completion handlers + IAgileObject +
@@ -41,10 +41,13 @@ capption/
   config/      schema.py (dataclasses, tolerant from_dict), store.py (paths, atomic JSON save)
   capture/     base.py (AudioSource, SourceInfo, SourceEnd), resample.py (soxr -> 16 kHz mono f32),
                file_source.py (PyAV, real-time paced), device_source.py (sounddevice; WASAPI-only on Win)
-               win_loopback.py  <-- TODO (spawns helper exe; referenced lazily by cli.py)
+               win_loopback.py (spawns capption-loopback.exe, maps exit codes to SourceEnd, probe())
   platform/    base.py (Platform, HotkeyManager, CaptureSupport), mac.py (dev: demo apps play a file),
                __init__.py (dispatch; Windows imports only in windows.py)
-               windows.py  <-- TODO (imported by platform.current() on win32 -> app won't start until written)
+               windows.py (Core Audio sessions via comtypes, RegisterHotKey, WS_EX_TRANSPARENT)
+native/loopback/ main.cpp + CMakeLists.txt: capption-loopback.exe --pid N [--rate --channels] | --probe.
+               float32 PCM on stdout; exits on stdin EOF. Exit codes: 0 ok, 2 args, 3 unsupported,
+               4 target exited, 5 device lost, 6 error. Pads silence when the app is quiet.
   asr/         vad.py (streaming Silero + VadSegmenter), agreement.py (LocalAgreement-2),
                streamer.py (rolling buffer, trim, per-segment language lock), engine.py (WhisperEngine,
                CUDA->CPU fallback, OOM), worker.py (inference thread, backlog drop, metrics),
@@ -64,33 +67,33 @@ tests/         unit tests (run anywhere); tests/windows/ for @pytest.mark.window
   `tiny` model on `tests/fixtures/speech.wav` streams partials that lock into confirmed text,
   ~0.5-1 s behind the speech, RTF ~0.13 on M-series CPU.
   Real-model test: `CAPPTION_TEST_MODEL=tiny CAPPTION_TEST_MODEL_DIR=<models dir> pytest tests/test_pipeline_real.py`.
-- **Stage 2 (UI): written, NOT yet run or visually checked.** Imports cleanly. Launch was blocked on
-  the Mac (macOS 27, build 26A428) under PySide6 6.11.2: `QDir.entryList()` returned nothing for the
-  plugin directory, so no platform plugin loaded. 6.11.2 was a bad pin: uv's cross-platform resolve
-  assumed macOS 12 and skipped the 6.12.0 `macosx_14_0_universal2` wheel. Now pinned to 6.12.0
-  everywhere. With 6.12.0 the UI launches on macOS and every page and the overlay render correctly
-  (checked via `QWidget.grab()` screenshots). Not yet tested: pressing Start in the GUI, and the
-  last tweaks (model-row button alignment, font picker showing the resolved family).
-  Seen once: a screenshot script hung on exit after `app.quit()`. Not investigated.
-  First job on Windows: launch the UI, fix whatever breaks, and screenshot every page plus the overlay.
-- **Stage 3 (Windows): not started.**
+- **Stage 2 (UI): runs on macOS and Windows** (PySide6 6.12.0; 6.11.2 was a bad pin on macOS 27).
+  On Windows (2026-10-13) every page and the overlay were checked via `QWidget.grab()` screenshots,
+  and Start in the GUI captioned mpv live. Fixed then: model-row Download/Delete alignment, engine
+  label showing the snapshot path, toggles without a knob (now SVG images in `capption/assets`).
+- **Stage 3 (Windows): platform/windows.py, the loopback helper and the UI run are done and
+  verified on the target machine.** Process loopback works on LTSC 2024 (`--probe` exit 0). `cli transcribe --pid` on mpv playing `speech.wav`:
+  large-v3-turbo on cuda/float16 (sm_120 works), load 2.5 s, RTF mean 0.08, ~1 GB VRAM.
+  Target exit, stop and bad pid map to the right SourceEnd. 39 tests pass (5 in tests/windows).
+  Partials sometimes show Whisper hallucinations ("Captions by Red Bee Media") at segment start;
+  LocalAgreement kept them out of committed text in testing.
+  Not yet tested: hotkeys firing, click-through, tray, auto-reattach after app restart in the GUI,
+  VB-Cable fallback, OOM fallback.
 
 ## Next steps (in order)
-1. `capption/platform/windows.py`: session enumeration (comtypes), `find_app` by exe name,
-   `capture_support()` (try loopback activation), RegisterHotKey manager, click-through.
-   `list_sources` should list processes with active audio sessions first, then WASAPI input devices.
-2. `native/loopback/` (CMakeLists.txt + main.cpp) and `capption/capture/win_loopback.py`.
-   Test via `python -m capption.cli record --pid <chrome pid> --out test.wav`, then `transcribe --pid`.
-3. Run the UI on Windows; fix layout and style issues (theme is Fusion + QSS, dark).
-4. `capption.spec` (PyInstaller): include `capption/assets`, the faster_whisper assets (silero ONNX),
+1. Manually test hotkeys, click-through, tray, reattach (see Status).
+2. `capption.spec` (PyInstaller): include `capption/assets`, the faster_whisper assets (silero ONNX),
    the helper exe and nvidia DLLs. It must build on a GPU-less runner.
-5. `.github/workflows/build.yml` on windows-latest: install requirements-windows + dev, pytest,
+3. `.github/workflows/build.yml` on windows-latest: install requirements-windows + dev, pytest,
    build the helper with CMake, build with PyInstaller, upload the artifact on push/tag.
-6. README.md (setup, build, troubleshooting) and WINDOWS_TESTING.md (manual checklist: loopback on
+4. README.md (setup, build, troubleshooting) and WINDOWS_TESTING.md (manual checklist: loopback on
    LTSC 2024, CUDA on the 5070, click-through, hotkeys, tray, reattach on app restart, OOM fallback).
 
 ## Commands
 ```
+# Build the loopback helper (VS Build Tools 2026 is installed; its bundled cmake isn't on PATH)
+"C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S native/loopback -B native/loopback/build -A x64
+"C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build native/loopback/build --config Release
 # Windows setup
 py -3.12 -m venv .venv
 .venv\Scripts\pip install -r requirements-windows.txt -r requirements-dev.txt

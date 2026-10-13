@@ -5,6 +5,8 @@ from __future__ import annotations
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
+from ..paths import asset_path
+
 BG = "#0E1014"
 SURFACE = "#161920"
 SURFACE_2 = "#1D2129"
@@ -70,10 +72,7 @@ QComboBox QAbstractItemView {{
 QSpinBox::up-button, QSpinBox::down-button {{ width: 0; border: none; }}
 
 QCheckBox {{ spacing: 8px; }}
-QCheckBox::indicator {{
-    width: 34px; height: 18px; border-radius: 9px; background: {SURFACE_3}; border: 1px solid {BORDER};
-}}
-QCheckBox::indicator:checked {{ background: {ACCENT}; border-color: {ACCENT}; }}
+QCheckBox::indicator {{ width: 34px; height: 18px; }}
 
 QSlider::groove:horizontal {{ height: 4px; background: {SURFACE_3}; border-radius: 2px; }}
 QSlider::sub-page:horizontal {{ background: {ACCENT}; border-radius: 2px; }}
@@ -118,4 +117,16 @@ def apply_theme(app: QApplication) -> None:
     ]:
         pal.setColor(role, QColor(color))
     app.setPalette(pal)
-    app.setStyleSheet(STYLESHEET)
+    app.setStyleSheet(STYLESHEET + _toggle_rules())
+
+
+def _toggle_rules() -> str:
+    """Checkboxes render as switches; QSS can't draw the knob, so use SVG images."""
+    def url(name: str) -> str:
+        return asset_path(name).as_posix()
+
+    return (
+        f"QCheckBox::indicator {{ image: url({url('toggle_off.svg')}); }}\n"
+        f"QCheckBox::indicator:checked {{ image: url({url('toggle_on.svg')}); }}\n"
+        f"QCheckBox::indicator:disabled {{ image: url({url('toggle_disabled.svg')}); }}\n"
+    )

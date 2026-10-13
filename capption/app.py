@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import signal
 import sys
 
@@ -157,6 +158,11 @@ class CapptionApp:
 
 
 def main() -> int:
+    # A windowed (PyInstaller --noconsole) build has no stdout/stderr; tqdm progress bars
+    # from huggingface_hub would crash writing to None.
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is None:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
     setup_logging()
     log.info("Capption %s starting on %s", __version__, sys.platform)
     app = QApplication(sys.argv)
