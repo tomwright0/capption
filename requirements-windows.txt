@@ -1,0 +1,7 @@
+-r requirements-common.txt
+onnxruntime==1.31.0
+comtypes==1.4.17
+# CUDA runtime for ctranslate2 (built against CUDA 12.8, cuDNN not required).
+# Loaded dynamically at runtime, so installing these on a GPU-less CI runner is fine.
+nvidia-cublas-cu12==12.9.2.10
+nvidia-cuda-runtime-cu12==12.9.79
