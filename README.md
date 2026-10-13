@@ -144,7 +144,9 @@ python -m capption.cli transcribe --file talk.mp4 --model small
 
 ## License
 
-Capption is free software under the [GNU General Public License v3.0 or later](LICENSE).
+Capption is free software under the [GNU General Public License v3.0 or later](LICENSE),
+with an [additional permission](LICENSE-EXCEPTION) (GPLv3 section 7) to link and ship it with
+NVIDIA's CUDA libraries.
 Bundled third-party components keep their own licenses: PySide6/Qt (LGPLv3), faster-whisper and
 CTranslate2 (MIT), Silero VAD (MIT), and the NVIDIA CUDA runtime/cuBLAS DLLs (NVIDIA CUDA
 EULA, redistributed as allowed for application use).

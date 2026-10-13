@@ -38,6 +38,7 @@ Name: "startup"; Description: "Start Capption when I sign in"; GroupDescription:
 
 [Files]
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"
+Source: "..\LICENSE-EXCEPTION"; DestDir: "{app}"; DestName: "LICENSE-EXCEPTION.txt"
 Source: "..\dist\Capption\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

@@ -1,0 +1,20 @@
+Capption
+Copyright (C) 2026 Tom Wright
+
+Capption is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, either version 3 of
+the License, or (at your option) any later version. See the LICENSE file.
+
+
+Additional permission under GNU GPL version 3 section 7
+
+If you modify this Program, or any covered work, by linking or combining it with the NVIDIA
+CUDA Runtime, cuBLAS, cuDNN, or any other library from the NVIDIA CUDA Toolkit (or a modified
+version of those libraries), containing parts covered by the terms of the NVIDIA CUDA Toolkit
+End User License Agreement or another NVIDIA software license, the licensors of this Program
+grant you additional permission to convey the resulting work. Corresponding Source for a
+non-source form of such a combination shall not include the source code for the parts of
+those NVIDIA libraries used, as well as that of the covered work.
+
+You may remove this additional permission from your copy of this Program, or from any part of
+it, as described in section 7 of the GNU GPL version 3.

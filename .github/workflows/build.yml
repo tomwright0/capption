@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths-ignore: ["**.md", "LICENSE"] # docs-only pushes don't rebuild (tags always build)
+    paths-ignore: ["**.md", "LICENSE*"] # docs-only pushes don't rebuild (tags always build)
   pull_request:
-    paths-ignore: ["**.md", "LICENSE"]
+    paths-ignore: ["**.md", "LICENSE*"]
   workflow_dispatch:
 
 permissions:
