@@ -65,8 +65,10 @@ tests/         unit tests (run anywhere); tests/windows/ for @pytest.mark.window
   ~0.5-1 s behind the speech, RTF ~0.13 on M-series CPU.
   Real-model test: `CAPPTION_TEST_MODEL=tiny CAPPTION_TEST_MODEL_DIR=<models dir> pytest tests/test_pipeline_real.py`.
 - **Stage 2 (UI): written, NOT yet run or visually checked.** Imports cleanly. Launch was blocked on
-  the Mac by a Qt issue (PySide6 6.11.2 on macOS 27 (build 26A428): `QDir.entryList()` returned nothing for
-  the plugin directory, so no platform plugin loaded). That's probably not relevant on Windows.
+  the Mac (macOS 27, build 26A428) under PySide6 6.11.2: `QDir.entryList()` returned nothing for the
+  plugin directory, so no platform plugin loaded. 6.11.2 was a bad pin: uv's cross-platform resolve
+  assumed macOS 12 and skipped the 6.12.0 `macosx_14_0_universal2` wheel. Now pinned to 6.12.0
+  everywhere; the macOS launch has not been retried yet.
   First job on Windows: launch the UI, fix whatever breaks, and screenshot every page plus the overlay.
 - **Stage 3 (Windows): not started.**
 

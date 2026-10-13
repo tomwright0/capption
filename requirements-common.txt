@@ -1,7 +1,7 @@
 # Shared runtime deps (install on every platform). Pins resolved for Python 3.12.
 faster-whisper==1.2.1
 ctranslate2==4.8.2
-PySide6-Essentials==6.11.2
+PySide6-Essentials==6.12.0
 numpy==2.5.4
 soxr==1.1.0
 sounddevice==0.5.6
