@@ -1,8 +1,10 @@
 [project]
 name = "capption"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local real-time captions for one application's audio"
 requires-python = ">=3.12,<3.13"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 
 [project.scripts]
 capption-cli = "capption.cli:main"

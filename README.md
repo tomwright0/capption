@@ -141,3 +141,10 @@ python -m capption.cli transcribe --file talk.mp4 --model small
   language explicitly instead of Auto-detect helps.
 - **A hotkey doesn't work**: another program already uses that combination. Pick a different
   one under **Hotkeys**.
+
+## License
+
+Capption is free software under the [GNU General Public License v3.0 or later](LICENSE).
+Bundled third-party components keep their own licenses: PySide6/Qt (LGPLv3), faster-whisper and
+CTranslate2 (MIT), Silero VAD (MIT), and the NVIDIA CUDA runtime/cuBLAS DLLs (NVIDIA CUDA
+EULA, redistributed as allowed for application use).

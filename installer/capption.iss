@@ -26,6 +26,7 @@ OutputDir=..\dist
 OutputBaseFilename=Capption-Setup-{#AppVersion}
 SetupIconFile=..\build\capption.ico
 UninstallDisplayIcon={app}\Capption.exe
+LicenseFile=..\LICENSE
 Compression=lzma2/normal
 SolidCompression=no
 WizardStyle=modern
@@ -36,6 +37,7 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Name: "startup"; Description: "Start Capption when I sign in"; GroupDescription: "Shortcuts:"; Flags: unchecked
 
 [Files]
+Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"
 Source: "..\dist\Capption\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
