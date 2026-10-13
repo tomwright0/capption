@@ -76,9 +76,11 @@ class CaptionController(QObject):
     # -- lifecycle ---------------------------------------------------------------
     def start(self, source: SourceInfo) -> None:
         self.stop()
-        self.source_info = source
         if source.kind == "process":
+            # The picker's pid may be stale (the app restarted since the list was built).
+            source = self.platform.find_app(source.key) or source
             self.config.capture.last_exe = source.key
+        self.source_info = source
         asr = self.config.asr
         if not models.is_downloaded(asr.model):
             self.model_missing.emit(asr.model)

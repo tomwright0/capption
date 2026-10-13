@@ -30,6 +30,26 @@ ALLOW_PATTERNS = ["config.json", "preprocessor_config.json", "model.bin", "token
 ProgressCallback = Callable[[int, int], None]  # (bytes_done, bytes_total)
 
 
+class TransferRate:
+    """Smoothed download speed (bytes/s) from (time, bytes_done) samples."""
+
+    def __init__(self, window_s: float = 3.0) -> None:
+        self.window_s = window_s
+        self._samples: list[tuple[float, int]] = []
+
+    def add(self, t: float, done: int) -> float | None:
+        """Record a sample; return bytes/s over the last ``window_s``, or None until known."""
+        if self._samples and done < self._samples[-1][1]:
+            self._samples.clear()  # restarted
+        self._samples.append((t, done))
+        while len(self._samples) > 2 and t - self._samples[1][0] >= self.window_s:
+            self._samples.pop(0)
+        t0, d0 = self._samples[0]
+        if t - t0 < 0.5:
+            return None
+        return (done - d0) / (t - t0)
+
+
 @dataclass
 class ModelStatus:
     name: str  # faster-whisper name or HF repo id
@@ -103,13 +123,16 @@ def download(
     """Blocking; run in a worker thread. Resumable: partial files are reused."""
     from huggingface_hub import snapshot_download
 
+    best = [0, 0]  # furthest (done, total) seen on any byte bar
+
     class Progress(tqdm):
-        # snapshot_download builds a "Reconstructing" byte bar fed by every file;
-        # that's the one that tracks bytes written to disk.
+        # snapshot_download (xet) drives two byte bars: "Downloading bytes" moves smoothly
+        # with the network, "Reconstructing" jumps as chunks land on disk. Report whichever
+        # is furthest ahead so the UI never goes backwards.
         def __init__(self, *args, **kwargs):
             kwargs["file"] = io.StringIO()
             kwargs["disable"] = False
-            self._report = str(kwargs.get("desc", "")).startswith("Reconstructing")
+            self._report = kwargs.get("unit") == "B"
             super().__init__(*args, **kwargs)
 
         def update(self, n=1):
@@ -117,7 +140,11 @@ def download(
                 raise DownloadCancelled(name)
             result = super().update(n)
             if self._report and on_progress and self.total:
-                on_progress(int(self.n), int(self.total))
+                total = max(best[1], int(self.total))
+                done = min(total, max(best[0], int(self.n)))
+                if (done, total) != tuple(best):
+                    best[:] = [done, total]
+                    on_progress(done, total)
             return result
 
     root = root or models_dir()

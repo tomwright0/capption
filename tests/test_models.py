@@ -33,3 +33,18 @@ def test_delete(tmp_path):
     models.delete("org/custom", tmp_path)
     assert not models.is_downloaded("org/custom", tmp_path)
     models.delete("org/custom", tmp_path)  # idempotent
+
+
+def test_transfer_rate():
+    from capption.asr.models import TransferRate
+
+    r = TransferRate(window_s=2.0)
+    assert r.add(0.0, 0) is None
+    assert r.add(0.2, 1_000) is None  # too early
+    assert r.add(1.0, 10_000) == 10_000
+    # Old samples drop out of the window: only the recent 20 kB/s counts.
+    r.add(2.0, 20_000)
+    r.add(3.0, 40_000)
+    assert r.add(4.0, 60_000) == 20_000
+    # Restart (resume from scratch) resets the history.
+    assert r.add(5.0, 0) is None

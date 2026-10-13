@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from collections.abc import Callable
 
 from PySide6.QtCore import QFileInfo, QLocale, QObject, Qt, QTimer, Signal
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QStackedWidget,
     QStyle,
+    QSystemTrayIcon,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -74,6 +76,15 @@ def human_size(n: int | None, approx: bool = False) -> str:
     if n >= 1e6:
         return f"{prefix}{n / 1e6:.0f} MB"
     return f"{prefix}{n / 1e3:.0f} KB"
+
+
+def human_duration(seconds: float) -> str:
+    s = max(0, int(seconds))
+    if s >= 3600:
+        return f"{s // 3600}h {s % 3600 // 60:02d}m"
+    if s >= 60:
+        return f"{s // 60}m {s % 60:02d}s"
+    return f"{s}s"
 
 
 def card(*widgets: QWidget, layout: str = "v") -> QFrame:
@@ -185,6 +196,7 @@ class ModelRow(QFrame):
         grid.setColumnMinimumWidth(2, 110)
         grid.setColumnStretch(0, 1)
         self._downloading = False
+        self._rate = models.TransferRate()
 
     def set_status(self, downloaded: bool, size: int | None, approx: bool) -> None:
         self.size.setText(human_size(size, approx))
@@ -198,11 +210,22 @@ class ModelRow(QFrame):
         self.delete.setVisible(downloaded)
 
     def set_progress(self, done: int, total: int) -> None:
+        if not self._downloading:
+            self._rate = models.TransferRate()
         self._downloading = True
         self.progress.setVisible(True)
         self.progress.setRange(0, 1000)
         self.progress.setValue(int(1000 * done / total) if total else 0)
-        self.state.setText(f"{human_size(done)} / {human_size(total)}")
+        if not total:
+            self.state.setText("Starting…")
+        else:
+            self.size.setText(f"{human_size(done)} / {human_size(total)}")
+            parts = [f"{100 * done / total:.0f}%"]
+            rate = self._rate.add(time.monotonic(), done)
+            if rate:
+                parts.append(f"{human_size(int(rate))}/s")
+                parts.append(f"{human_duration((total - done) / rate)} left")
+            self.state.setText(" · ".join(parts))
         self.state.setStyleSheet(f"color: {theme.TEXT};")
         self.action.setText("Cancel")
         self.action.setEnabled(True)
@@ -771,7 +794,10 @@ class MainWindow(QMainWindow):
             self._changed()
 
     def closeEvent(self, event) -> None:
-        # Closing the window keeps the app in the tray.
+        # Closing the window keeps the app in the tray (when there is one).
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            event.accept()
+            return
         event.ignore()
         self.hide()
 

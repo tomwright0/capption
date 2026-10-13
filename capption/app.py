@@ -77,6 +77,8 @@ class CapptionApp:
 
     # -- behaviour -----------------------------------------------------------------
     def _on_update(self, update) -> None:
+        if self.controller.state == "idle":
+            return  # late flush from a stopped worker; don't refill a cleared overlay
         self.captions.apply(update)
         self.overlay.set_text(*self.captions.display())
 
@@ -154,7 +156,9 @@ class CapptionApp:
         self.controller.stop()
         self.hotkeys.unregister_all()
         self._save()
-        self.app.quit()
+        # Not quit(): in Qt 6 that first sends close events, and MainWindow ignores them
+        # (close = hide to tray), which cancels the quit.
+        self.app.exit(0)
 
 
 def main() -> int:

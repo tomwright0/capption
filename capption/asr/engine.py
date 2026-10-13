@@ -33,7 +33,10 @@ def add_cuda_dll_dirs() -> None:
     bundle) findable. ctranslate2 loads them lazily, so this is safe without a GPU."""
     if sys.platform != "win32":
         return
-    roots = [Path(getattr(sys, "_MEIPASS", ""))] if getattr(sys, "frozen", False) else []
+    roots: list[Path] = []
+    if getattr(sys, "frozen", False):
+        bundle = Path(getattr(sys, "_MEIPASS", ""))
+        roots += [bundle, bundle / "nvidia"]  # capption.spec keeps the wheels' nvidia/*/bin layout
     try:
         import nvidia  # namespace package from nvidia-*-cu12 wheels
 

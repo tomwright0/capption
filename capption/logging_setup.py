@@ -33,8 +33,11 @@ def setup_logging(console_level: int = logging.WARNING) -> None:
     except OSError as exc:
         root.warning("File logging unavailable: %s", exc)
 
-    for noisy in ("faster_whisper", "httpx", "urllib3", "huggingface_hub"):
+    for noisy in ("httpx", "urllib3", "huggingface_hub"):
         logging.getLogger(noisy).setLevel(logging.INFO)
+    # faster_whisper logs every inference at INFO; comtypes/httpcore log every call at DEBUG.
+    for chatty in ("faster_whisper", "comtypes", "httpcore", "httpcore2", "filelock"):
+        logging.getLogger(chatty).setLevel(logging.WARNING)
 
     def thread_hook(args: threading.ExceptHookArgs) -> None:
         logging.getLogger("thread").error(
